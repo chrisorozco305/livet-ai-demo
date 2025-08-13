@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState, useMemo } from "react";
+import { events as eventList, artists as artistList, hosts as hostList } from "@/data/mock";
 
 /* ---------- Reusable UI ---------- */
 function FilterPills({
@@ -32,6 +33,21 @@ function FilterPills({
   );
 }
 
+function LeftArrow({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      aria-label={label}
+      onClick={onClick}
+      className="absolute top-1/2 -translate-y-1/2 left-[-32px] sm:left-[-40px] z-10 rounded-full bg-black/70 text-white border border-white/10 h-10 w-10 flex items-center justify-center hover:bg-black/80 active:scale-95 transition shadow-lg"
+      style={{ pointerEvents: "auto" }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M16 4L8 12l8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
 function RightArrow({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
@@ -49,13 +65,19 @@ function RightArrow({ onClick, label }: { onClick: () => void; label: string }) 
 
 /* ---------- Page ---------- */
 export default function Home() {
-  const filters = ["Suggested", "Hot", "Popular", "Near", "Liked"];
+  const filters = ["Suggested", "Popular", "Near", "Liked"];
+  const artistFilters = ["Suggested", "Popular", "Liked"];
   const [eventFilter, setEventFilter] = useState("Suggested");
   const [artistFilter, setArtistFilter] = useState("Suggested");
 
-  // sample data to paginate
-  const events = useMemo(() => Array.from({ length: 6 }, (_, i) => `Event ${i + 1}`), []);
-  const artists = useMemo(() => Array.from({ length: 10 }, (_, i) => `Artist ${i + 1}`), []);
+  // use real data
+  const events = eventList;
+  const artists = artistList;
+  const hosts = hostList;
+
+  // quick lookup maps
+  const hostById = useMemo(() => new Map(hosts.map(h => [h.id, h])), [hosts]);
+  const artistById = useMemo(() => new Map(artists.map(a => [a.id, a])), [artists]);
 
   // paging config
   const EVENTS_PER_PAGE = 3;
@@ -66,7 +88,10 @@ export default function Home() {
   const [artistPage, setArtistPage] = useState(0);
 
   const nextEventPage = () => setEventPage((p) => (p + 1) % eventPages);
+  const prevEventPage = () => setEventPage((p) => (p - 1 + eventPages) % eventPages);
+
   const nextArtistPage = () => setArtistPage((p) => (p + 1) % artistPages);
+  const prevArtistPage = () => setArtistPage((p) => (p - 1 + artistPages) % artistPages);
 
   return (
     <div className="min-h-screen w-screen font-sans relative flex flex-col">
@@ -108,6 +133,9 @@ export default function Home() {
           <FilterPills options={filters} value={eventFilter} onChange={setEventFilter} />
 
           <div className="relative mt-6 pr-10">
+            {/* Left arrow (outside) */}
+            <LeftArrow onClick={prevEventPage} label="Previous events" />
+
             {/* viewport */}
             <div className="overflow-hidden rounded-2xl">
               {/* track */}
@@ -122,26 +150,48 @@ export default function Home() {
                   return (
                     <div
                       key={pageIdx}
-                      className="w-full shrink-0 px-2" // <-- add horizontal padding between pages
+                      className="w-full shrink-0 px-2" // spacing between pages
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        {slice.map((label) => (
+                        {slice.map((ev) => (
                           <button
-                            key={label}
-                            onClick={() => alert(`Open ${label}`)}
+                            key={ev.id}
                             className="group relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-900"
                           >
                             <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-700" />
                             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-                            <span className="absolute left-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-black/70 text-white border border-white/10">
-                              Promoted
+                            {/* top-left: likes */}
+                            <span className="absolute left-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/85 text-neutral-900 border border-white/20">
+                              ❤ {ev.likes.toLocaleString()}
                             </span>
-                            <span className="absolute right-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/80 text-neutral-800">
-                              ❤ 2K
+                            {/* top-right: distance */}
+                            <span className="absolute right-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-black/70 text-white border border-white/10">
+                              {ev.distance?.toFixed(1) ?? '0.0'} mi
                             </span>
-                            <span className="absolute left-4 bottom-3 text-sm sm:text-base text-white/90">
-                              {label}
-                            </span>
+                            {/* bottom details */}
+                            {(() => {
+                              const host = hostById.get(ev.hostId);
+                              const performerNames = ev.artistIds
+                                .map(id => artistById.get(id)?.name)
+                                .filter(Boolean) as string[];
+                              const performerLine =
+                                performerNames.length > 2
+                                  ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}`
+                                  : performerNames.join(", ");
+                              return (
+                                <div className="absolute left-4 right-4 bottom-3 space-y-0.5 text-white drop-shadow">
+                                  <div className="text-sm sm:text-base font-semibold">{ev.name}</div>
+                                  <div className="text-xs text-white/90">
+                                    {ev.genre}{performerLine ? ` • ${performerLine}` : ""}
+                                  </div>
+                                  {host && (
+                                    <div className="text-[11px] text-white/80">
+                                      Host: {host.name} • {host.followers.toLocaleString()} followers
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <div className="absolute inset-0 ring-0 group-hover:ring-4 ring-pink-500/20 transition-all" />
                           </button>
                         ))}
@@ -157,7 +207,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right arrow floated outside */}
+            {/* Right arrow (outside) */}
             <RightArrow onClick={nextEventPage} label="Next events" />
           </div>
         </div>
@@ -168,9 +218,12 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-6 py-10">
           <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">City Artists</h2>
 
-          <FilterPills options={filters} value={artistFilter} onChange={setArtistFilter} />
+          <FilterPills options={artistFilters} value={artistFilter} onChange={setArtistFilter} />
 
           <div className="relative mt-6 pr-10">
+            {/* Left arrow (outside) */}
+            <LeftArrow onClick={prevArtistPage} label="Previous artists" />
+
             {/* viewport */}
             <div className="overflow-hidden">
               {/* track */}
@@ -185,19 +238,19 @@ export default function Home() {
                   return (
                     <div
                       key={pageIdx}
-                      className="w-full shrink-0 px-3" // <-- add horizontal padding between pages
+                      className="w-full shrink-0 px-3" // spacing between pages
                     >
                       <div className="flex items-start justify-between gap-6">
-                        {slice.map((label) => (
+                        {slice.map((ar) => (
                           <button
-                            key={label}
-                            onClick={() => alert(`Open ${label}`)}
+                            key={ar.id}
                             className="flex flex-col items-center"
                           >
                             <div className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-neutral-800 to-neutral-700">
                               <div className="absolute inset-0 ring-0 hover:ring-4 ring-blue-500/20 transition-all" />
                             </div>
-                            <span className="mt-3 text-sm text-neutral-300">{label}</span>
+                            <span className="mt-3 text-sm text-neutral-100 font-medium">{ar.name}</span>
+                            <span className="text-xs text-neutral-400">{ar.genre} • {ar.followers.toLocaleString()} followers</span>
                           </button>
                         ))}
                         {/* pad to 5 if fewer */}
@@ -212,7 +265,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right arrow floated outside */}
+            {/* Right arrow (outside) */}
             <RightArrow onClick={nextArtistPage} label="Next artists" />
           </div>
         </div>
