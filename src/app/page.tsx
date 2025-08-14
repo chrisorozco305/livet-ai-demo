@@ -65,14 +65,26 @@ function RightArrow({ onClick, label }: { onClick: () => void; label: string }) 
 
 /* ---------- Page ---------- */
 export default function Home() {
-  const filters = ["Suggested", "Popular", "Near", "Liked"];
-  const artistFilters = ["Suggested", "Popular", "Liked"];
+  const filters = ["Suggested", "Popular", "Near", "Liked", "Following"];
+  const artistFilters = ["Suggested", "Popular", "Following"];
   const [eventFilter, setEventFilter] = useState("Suggested");
   const [artistFilter, setArtistFilter] = useState("Suggested");
 
   // use real data
-  const events = eventList;
-  const artists = artistList;
+  let events = eventList;
+  if (eventFilter === "Near") {
+    events = [...events].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+  } else if (eventFilter === "Popular") {
+    events = [...events].sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0));
+  } else if (eventFilter === "Liked" || eventFilter === "Following") {
+    events = [];
+  }
+  let artists = artistList;
+  if (artistFilter === "Popular") {
+    artists = [...artists].sort((a, b) => (b.followers ?? 0) - (a.followers ?? 0));
+  } else if (artistFilter === "Liked" || artistFilter === "Following") {
+    artists = [];
+  }
   const hosts = hostList;
 
   // quick lookup maps
@@ -153,48 +165,56 @@ export default function Home() {
                       className="w-full shrink-0 px-2" // spacing between pages
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        {slice.map((ev) => (
-                          <button
-                            key={ev.id}
-                            className="group relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-900"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-700" />
-                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-                            {/* top-left: likes */}
-                            <span className="absolute left-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/85 text-neutral-900 border border-white/20">
-                              ❤ {ev.likes.toLocaleString()}
-                            </span>
-                            {/* top-right: distance */}
-                            <span className="absolute right-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-black/70 text-white border border-white/10">
-                              {ev.distance?.toFixed(1) ?? '0.0'} mi
-                            </span>
-                            {/* bottom details */}
-                            {(() => {
-                              const host = hostById.get(ev.hostId);
-                              const performerNames = ev.artistIds
-                                .map(id => artistById.get(id)?.name)
-                                .filter(Boolean) as string[];
-                              const performerLine =
-                                performerNames.length > 2
-                                  ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}`
-                                  : performerNames.join(", ");
-                              return (
-                                <div className="absolute left-4 right-4 bottom-3 space-y-0.5 text-white drop-shadow">
-                                  <div className="text-sm sm:text-base font-semibold">{ev.name}</div>
-                                  <div className="text-xs text-white/90">
-                                    {ev.genre}{performerLine ? ` • ${performerLine}` : ""}
-                                  </div>
-                                  {host && (
-                                    <div className="text-[11px] text-white/80">
-                                      Host: {host.name} • {host.followers.toLocaleString()} followers
+                        {slice.map((ev) => {
+                          const host = hostById.get(ev.hostId);
+                          return (
+                            <div key={ev.id} className="flex flex-col items-center">
+                              <button
+                                className="group relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-900 w-full"
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-700" />
+                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                                {/* top-left: likes */}
+                                <span className="absolute left-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/85 text-neutral-900 border border-white/20">
+                                  ❤ {ev.likes.toLocaleString()}
+                                </span>
+                                {/* top-right: distance */}
+                                <span className="absolute right-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-black/70 text-white border border-white/10">
+                                  {ev.distance?.toFixed(1) ?? '0.0'} mi
+                                </span>
+                                {/* bottom details */}
+                                {(() => {
+                                  const performerNames = ev.artistIds
+                                    .map(id => artistById.get(id)?.name)
+                                    .filter(Boolean) as string[];
+                                  const performerLine =
+                                    performerNames.length > 2
+                                      ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}`
+                                      : performerNames.join(", ");
+                                  return (
+                                    <div className="absolute left-4 right-4 bottom-3 space-y-0.5 text-white drop-shadow">
+                                      <div className="text-sm sm:text-base font-semibold">{ev.name}</div>
+                                      <div className="text-xs text-white/90">
+                                        {ev.genre}{performerLine ? ` • ${performerLine}` : ""}
+                                      </div>
+                                      {host && (
+                                        <div className="text-[11px] text-white/80">
+                                          Host: {host.name} • {host.followers.toLocaleString()} followers
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                            <div className="absolute inset-0 ring-0 group-hover:ring-4 ring-pink-500/20 transition-all" />
-                          </button>
-                        ))}
+                                  );
+                                })()}
+                                <div className="absolute inset-0 ring-0 group-hover:ring-4 ring-pink-500/20 transition-all" />
+                              </button>
+                              {host && (
+                                <button className="mt-2 px-4 py-1.5 rounded-full bg-pink-600 text-white text-xs font-semibold hover:bg-pink-700 transition-colors w-full">
+                                  Follow {host.name}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                         {/* keep grid filled if last page shorter */}
                         {slice.length < EVENTS_PER_PAGE &&
                           Array.from({ length: EVENTS_PER_PAGE - slice.length }).map((_, j) => (
@@ -242,16 +262,16 @@ export default function Home() {
                     >
                       <div className="flex items-start justify-between gap-6">
                         {slice.map((ar) => (
-                          <button
-                            key={ar.id}
-                            className="flex flex-col items-center"
-                          >
-                            <div className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-neutral-800 to-neutral-700">
+                          <div key={ar.id} className="flex flex-col items-center">
+                            <button
+                              className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-neutral-800 to-neutral-700"
+                            >
                               <div className="absolute inset-0 ring-0 hover:ring-4 ring-blue-500/20 transition-all" />
-                            </div>
+                            </button>
                             <span className="mt-3 text-sm text-neutral-100 font-medium">{ar.name}</span>
                             <span className="text-xs text-neutral-400">{ar.genre} • {ar.followers.toLocaleString()} followers</span>
-                          </button>
+                            <button className="mt-2 px-4 py-1.5 rounded-full bg-pink-600 text-white text-xs font-semibold hover:bg-pink-700 transition-colors">Follow</button>
+                          </div>
                         ))}
                         {/* pad to 5 if fewer */}
                         {slice.length < ARTISTS_PER_PAGE &&
