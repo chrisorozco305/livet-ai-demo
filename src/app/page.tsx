@@ -63,45 +63,97 @@ function RightArrow({ onClick, label }: { onClick: () => void; label: string }) 
   );
 }
 
+// Heart icon that can be outlined or filled red
+function Heart({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      className={filled ? "text-red-500" : "text-neutral-900"}
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "currentColor" : "currentColor"}
+      strokeWidth="2"
+    >
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-8.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+    </svg>
+  );
+}
+
 /* ---------- Page ---------- */
 export default function Home() {
-  const filters = ["Suggested", "Popular", "Near", "Liked", "Following"];
+  const filters = ["Suggested", "Popular", "Near", "Likes", "Following"];
   const artistFilters = ["Suggested", "Popular", "Following"];
+
   const [eventFilter, setEventFilter] = useState("Suggested");
   const [artistFilter, setArtistFilter] = useState("Suggested");
 
-  // use real data
+  // Follow state (hosts for events, artists for artists)
+  const [followedHosts, setFollowedHosts] = useState<Set<string>>(new Set());
+  const [followedArtists, setFollowedArtists] = useState<Set<string>>(new Set());
+
+  // Like state for events (ids of liked events)
+  const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
+
+  const toggleFollowHost = (hostId: string) => {
+    setFollowedHosts((prev) => {
+      const next = new Set(prev);
+      next.has(hostId) ? next.delete(hostId) : next.add(hostId);
+      return next;
+    });
+  };
+  const toggleFollowArtist = (artistId: string) => {
+    setFollowedArtists((prev) => {
+      const next = new Set(prev);
+      next.has(artistId) ? next.delete(artistId) : next.add(artistId);
+      return next;
+    });
+  };
+  const toggleLikeEvent = (eventId: string) => {
+    setLikedEvents((prev) => {
+      const next = new Set(prev);
+      next.has(eventId) ? next.delete(eventId) : next.add(eventId);
+      return next;
+    });
+  };
+
+  // source data
+  const hosts = hostList;
+
+  // filter Events
   let events = eventList;
   if (eventFilter === "Near") {
     events = [...events].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   } else if (eventFilter === "Popular") {
     events = [...events].sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0));
-  } else if (eventFilter === "Liked" || eventFilter === "Following") {
-    events = [];
+  } else if (eventFilter === "Likes") {
+    events = events.filter((e) => likedEvents.has(e.id));
+  } else if (eventFilter === "Following") {
+    events = events.filter((e) => followedHosts.has(e.hostId));
   }
+
+  // filter Artists
   let artists = artistList;
   if (artistFilter === "Popular") {
     artists = [...artists].sort((a, b) => (b.followers ?? 0) - (a.followers ?? 0));
-  } else if (artistFilter === "Liked" || artistFilter === "Following") {
-    artists = [];
+  } else if (artistFilter === "Following") {
+    artists = artists.filter((a) => followedArtists.has(a.id));
   }
-  const hosts = hostList;
 
-  // quick lookup maps
-  const hostById = useMemo(() => new Map(hosts.map(h => [h.id, h])), [hosts]);
-  const artistById = useMemo(() => new Map(artists.map(a => [a.id, a])), [artists]);
+  // lookups
+  const hostById = useMemo(() => new Map(hosts.map((h) => [h.id, h])), [hosts]);
+  const artistById = useMemo(() => new Map(artistList.map((a) => [a.id, a])), []); // full list for names
 
-  // paging config
+  // paging (safe when empty)
   const EVENTS_PER_PAGE = 3;
   const ARTISTS_PER_PAGE = 5;
-  const eventPages = Math.ceil(events.length / EVENTS_PER_PAGE);
-  const artistPages = Math.ceil(artists.length / ARTISTS_PER_PAGE);
+  const eventPages = Math.max(1, Math.ceil(events.length / EVENTS_PER_PAGE));
+  const artistPages = Math.max(1, Math.ceil(artists.length / ARTISTS_PER_PAGE));
   const [eventPage, setEventPage] = useState(0);
   const [artistPage, setArtistPage] = useState(0);
 
   const nextEventPage = () => setEventPage((p) => (p + 1) % eventPages);
   const prevEventPage = () => setEventPage((p) => (p - 1 + eventPages) % eventPages);
-
   const nextArtistPage = () => setArtistPage((p) => (p + 1) % artistPages);
   const prevArtistPage = () => setArtistPage((p) => (p - 1 + artistPages) % artistPages);
 
@@ -120,160 +172,145 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* HERO (full screen) */}
+      {/* HERO */}
       <main className="relative flex flex-col items-center justify-center min-h-screen w-full overflow-hidden pt-16">
         <div className="absolute inset-0 -z-10">
-          <Image
-            src="/hero-concert.jpg"
-            alt="Concert crowd and stage"
-            fill
-            style={{ objectFit: "cover" }}
-            priority
-          />
+          <Image src="/hero-concert.jpg" alt="Concert crowd and stage" fill style={{ objectFit: "cover" }} priority />
           <div className="absolute inset-0 bg-black/60" />
         </div>
-
         <h1 className="text-5xl sm:text-7xl font-extrabold text-white drop-shadow-lg text-center">Livet</h1>
         <p className="mt-4 text-xl sm:text-2xl italic text-white drop-shadow text-center">Life is a party</p>
       </main>
 
-      {/* CITY EVENTS — slider with 3 squares per page */}
+      {/* CITY EVENTS */}
       <section className="w-full bg-white dark:bg-neutral-950">
         <div className="mx-auto max-w-6xl px-6 py-10">
           <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">City Events</h2>
 
-          <FilterPills options={filters} value={eventFilter} onChange={setEventFilter} />
+          <FilterPills options={filters} value={eventFilter} onChange={(v) => { setEventFilter(v); setEventPage(0); }} />
 
           <div className="relative mt-6 pr-10">
-            {/* Left arrow (outside) */}
             <LeftArrow onClick={prevEventPage} label="Previous events" />
-
-            {/* viewport */}
             <div className="overflow-hidden rounded-2xl">
-              {/* track */}
-              <div
-                className="flex w-full transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${eventPage * 100}%)` }}
-              >
-                {/* pages */}
+              <div className="flex w-full transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${eventPage * 100}%)` }}>
                 {Array.from({ length: eventPages }).map((_, pageIdx) => {
                   const start = pageIdx * EVENTS_PER_PAGE;
                   const slice = events.slice(start, start + EVENTS_PER_PAGE);
                   return (
-                    <div
-                      key={pageIdx}
-                      className="w-full shrink-0 px-2" // spacing between pages
-                    >
+                    <div key={pageIdx} className="w-full shrink-0 px-2">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        {slice.length === 0 && <div className="col-span-3 text-center py-16 text-neutral-500">No events to display.</div>}
                         {slice.map((ev) => {
                           const host = hostById.get(ev.hostId);
+                          const isFollowingHost = !!host && followedHosts.has(host.id);
+                          const isLiked = likedEvents.has(ev.id);
+                          const displayLikes = ev.likes + (isLiked ? 1 : 0);
+
                           return (
                             <div key={ev.id} className="flex flex-col items-center">
-                              <button
-                                className="group relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-900 w-full"
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => {/* open event, etc. */}}
+                                onKeyDown={(e) => { if (e.key === "Enter") {/* open event */} }}
+                                className="group relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-900 w-full cursor-pointer"
                               >
-                                <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-700" />
-                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-                                {/* top-left: likes */}
-                                <span className="absolute left-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/85 text-neutral-900 border border-white/20">
-                                  ❤ {ev.likes.toLocaleString()}
-                                </span>
-                                {/* top-right: distance */}
+
+                                <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-700 pointer-events-none" />
+                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors pointer-events-none" />
+
+                                {/* Like toggle (top-left) */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); toggleLikeEvent(ev.id); }}
+                                  className="absolute left-3 top-3 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/90 text-neutral-900 border border-white/30 hover:bg-white pointer-events-auto z-10"
+                                >
+                                  <Heart filled={isLiked} />
+                                  {displayLikes.toLocaleString()}
+                                </button>
+
+                                {/* Distance (top-right) */}
                                 <span className="absolute right-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-black/70 text-white border border-white/10">
-                                  {ev.distance?.toFixed(1) ?? '0.0'} mi
+                                  {ev.distance?.toFixed(1) ?? "0.0"} mi
                                 </span>
+
                                 {/* bottom details */}
                                 {(() => {
-                                  const performerNames = ev.artistIds
-                                    .map(id => artistById.get(id)?.name)
-                                    .filter(Boolean) as string[];
-                                  const performerLine =
-                                    performerNames.length > 2
-                                      ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}`
-                                      : performerNames.join(", ");
+                                  const performerNames = ev.artistIds.map((id) => artistById.get(id)?.name).filter(Boolean) as string[];
+                                  const performerLine = performerNames.length > 2 ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}` : performerNames.join(", ");
                                   return (
                                     <div className="absolute left-4 right-4 bottom-3 space-y-0.5 text-white drop-shadow">
                                       <div className="text-sm sm:text-base font-semibold">{ev.name}</div>
-                                      <div className="text-xs text-white/90">
-                                        {ev.genre}{performerLine ? ` • ${performerLine}` : ""}
-                                      </div>
-                                      {host && (
-                                        <div className="text-[11px] text-white/80">
-                                          Host: {host.name} • {host.followers.toLocaleString()} followers
-                                        </div>
-                                      )}
+                                      <div className="text-xs text-white/90">{ev.genre}{performerLine ? ` • ${performerLine}` : ""}</div>
+                                      {host && <div className="text-[11px] text-white/80">Host: {host.name} • {host.followers.toLocaleString()} followers</div>}
                                     </div>
                                   );
                                 })()}
                                 <div className="absolute inset-0 ring-0 group-hover:ring-4 ring-pink-500/20 transition-all" />
-                              </button>
+                              </div>
+
                               {host && (
-                                <button className="mt-2 px-4 py-1.5 rounded-full bg-pink-600 text-white text-xs font-semibold hover:bg-pink-700 transition-colors w-full">
-                                  Follow {host.name}
+                                <button
+                                  onClick={() => toggleFollowHost(host.id)}
+                                  className={`mt-2 px-4 py-1.5 rounded-full text-white text-xs font-semibold w-full transition-colors ${
+                                    isFollowingHost ? "bg-gray-600 hover:bg-gray-500" : "bg-pink-600 hover:bg-pink-700"
+                                  }`}
+                                >
+                                  {isFollowingHost ? "Following" : `Follow ${host.name}`}
                                 </button>
                               )}
                             </div>
                           );
                         })}
-                        {/* keep grid filled if last page shorter */}
-                        {slice.length < EVENTS_PER_PAGE &&
-                          Array.from({ length: EVENTS_PER_PAGE - slice.length }).map((_, j) => (
-                            <div key={`ev-empty-${j}`} className="aspect-square rounded-2xl border border-dashed border-neutral-800/50" />
-                          ))}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            {/* Right arrow (outside) */}
             <RightArrow onClick={nextEventPage} label="Next events" />
           </div>
         </div>
       </section>
 
-      {/* CITY ARTISTS — slider with 5 circles per page */}
+      {/* CITY ARTISTS */}
       <section className="w-full bg-white dark:bg-neutral-950">
         <div className="mx-auto max-w-6xl px-6 py-10">
           <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">City Artists</h2>
 
-          <FilterPills options={artistFilters} value={artistFilter} onChange={setArtistFilter} />
+          <FilterPills options={artistFilters} value={artistFilter} onChange={(v) => { setArtistFilter(v); setArtistPage(0); }} />
 
           <div className="relative mt-6 pr-10">
-            {/* Left arrow (outside) */}
             <LeftArrow onClick={prevArtistPage} label="Previous artists" />
-
-            {/* viewport */}
             <div className="overflow-hidden">
-              {/* track */}
-              <div
-                className="flex w-full transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${artistPage * 100}%)` }}
-              >
-                {/* pages */}
+              <div className="flex w-full transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${artistPage * 100}%)` }}>
                 {Array.from({ length: artistPages }).map((_, pageIdx) => {
                   const start = pageIdx * ARTISTS_PER_PAGE;
                   const slice = artists.slice(start, start + ARTISTS_PER_PAGE);
                   return (
-                    <div
-                      key={pageIdx}
-                      className="w-full shrink-0 px-3" // spacing between pages
-                    >
+                    <div key={pageIdx} className="w-full shrink-0 px-3">
                       <div className="flex items-start justify-between gap-6">
-                        {slice.map((ar) => (
-                          <div key={ar.id} className="flex flex-col items-center">
-                            <button
-                              className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-neutral-800 to-neutral-700"
-                            >
-                              <div className="absolute inset-0 ring-0 hover:ring-4 ring-blue-500/20 transition-all" />
-                            </button>
-                            <span className="mt-3 text-sm text-neutral-100 font-medium">{ar.name}</span>
-                            <span className="text-xs text-neutral-400">{ar.genre} • {ar.followers.toLocaleString()} followers</span>
-                            <button className="mt-2 px-4 py-1.5 rounded-full bg-pink-600 text-white text-xs font-semibold hover:bg-pink-700 transition-colors">Follow</button>
-                          </div>
-                        ))}
-                        {/* pad to 5 if fewer */}
+                        {slice.length === 0 && <div className="w-full text-center py-16 text-neutral-500">No artists to display.</div>}
+                        {slice.map((ar) => {
+                          const isFollowingArtist = followedArtists.has(ar.id);
+                          return (
+                            <div key={ar.id} className="flex flex-col items-center">
+                              <button className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-neutral-800 to-neutral-700">
+                                <div className="absolute inset-0 ring-0 hover:ring-4 ring-blue-500/20 transition-all" />
+                              </button>
+                              <span className="mt-3 text-sm text-neutral-100 font-medium">{ar.name}</span>
+                              <span className="text-xs text-neutral-400">{ar.genre} • {ar.followers.toLocaleString()} followers</span>
+                              <button
+                                onClick={() => toggleFollowArtist(ar.id)}
+                                className={`mt-2 px-4 py-1.5 rounded-full text-white text-xs font-semibold transition-colors ${
+                                  isFollowingArtist ? "bg-gray-600 hover:bg-gray-500" : "bg-pink-600 hover:bg-pink-700"
+                                }`}
+                              >
+                                {isFollowingArtist ? "Following" : "Follow"}
+                              </button>
+                            </div>
+                          );
+                        })}
                         {slice.length < ARTISTS_PER_PAGE &&
                           Array.from({ length: ARTISTS_PER_PAGE - slice.length }).map((_, j) => (
                             <div key={`ar-empty-${j}`} className="h-32 w-32 rounded-full opacity-0" />
@@ -284,8 +321,6 @@ export default function Home() {
                 })}
               </div>
             </div>
-
-            {/* Right arrow (outside) */}
             <RightArrow onClick={nextArtistPage} label="Next artists" />
           </div>
         </div>
