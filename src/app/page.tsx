@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { events as eventList, artists as artistList, hosts as hostList } from "@/data/mock";
 
 /* ---------- Reusable UI ---------- */
@@ -72,7 +73,7 @@ function Heart({ filled }: { filled: boolean }) {
       viewBox="0 0 24 24"
       className={filled ? "text-red-500" : "text-neutral-900"}
       fill={filled ? "currentColor" : "none"}
-      stroke={filled ? "currentColor" : "currentColor"}
+      stroke="currentColor"
       strokeWidth="2"
     >
       <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-8.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
@@ -82,6 +83,7 @@ function Heart({ filled }: { filled: boolean }) {
 
 /* ---------- Page ---------- */
 export default function Home() {
+  const router = useRouter();
   const filters = ["Suggested", "Popular", "Near", "Likes", "Following"];
   const artistFilters = ["Suggested", "Popular", "Following"];
 
@@ -182,10 +184,10 @@ export default function Home() {
         <p className="mt-4 text-xl sm:text-2xl italic text-white drop-shadow text-center">Life is a party</p>
       </main>
 
-      {/* CITY EVENTS */}
+      {/* FOR YOU */}
       <section className="w-full bg-white dark:bg-neutral-950">
         <div className="mx-auto max-w-6xl px-6 py-10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">City Events</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-neutral-100">For You</h2>
 
           <FilterPills options={filters} value={eventFilter} onChange={(v) => { setEventFilter(v); setEventPage(0); }} />
 
@@ -211,54 +213,72 @@ export default function Home() {
                               <div
                                 role="button"
                                 tabIndex={0}
-                                onClick={() => {/* open event, etc. */}}
-                                onKeyDown={(e) => { if (e.key === "Enter") {/* open event */} }}
+                                onClick={() => router.push(`/event/${ev.id}`)}
+                                onKeyDown={(e) => { if (e.key === "Enter") router.push(`/event/${ev.id}`); }}
                                 className="group relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-900 w-full cursor-pointer"
                               >
+                                {/* Event Image / placeholder */}
+                                <div className="absolute inset-0 flex items-center justify-center" style={{ background: "#232326" }}>
+                                  <span
+                                    className="text-2xl sm:text-3xl font-bold text-white drop-shadow text-center w-full select-none"
+                                    style={{ textShadow: "0 2px 8px rgba(0,0,0,0.25)" }}
+                                  >
+                                    {ev.name}
+                                  </span>
+                                </div>
 
-                                <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-700 pointer-events-none" />
-                                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                {/* Like + Follow (top-left) */}
+                                <div className="absolute left-3 top-3 flex gap-2 z-10">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); toggleLikeEvent(ev.id); }}
+                                    className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/90 text-neutral-900 border border-white/30 hover:bg-white pointer-events-auto"
+                                  >
+                                    <Heart filled={isLiked} />
+                                    {displayLikes.toLocaleString()}
+                                  </button>
+                                  {host && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); toggleFollowHost(host.id); }}
+                                      className={`px-3 py-1 rounded-full text-white text-xs font-semibold transition-colors pointer-events-auto ${
+                                        isFollowingHost ? "bg-gray-600 hover:bg-gray-500" : "bg-pink-600 hover:bg-pink-700"
+                                      }`}
+                                    >
+                                      {isFollowingHost ? "Following" : "Follow Host"}
+                                    </button>
+                                  )}
+                                </div>
 
-                                {/* Like toggle (top-left) */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); toggleLikeEvent(ev.id); }}
-                                  className="absolute left-3 top-3 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full bg-white/90 text-neutral-900 border border-white/30 hover:bg-white pointer-events-auto z-10"
-                                >
-                                  <Heart filled={isLiked} />
-                                  {displayLikes.toLocaleString()}
-                                </button>
-
-                                {/* Distance (top-right) */}
+                                {/* Distance */}
                                 <span className="absolute right-3 top-3 text-[11px] font-semibold px-2 py-1 rounded-full bg-black/70 text-white border border-white/10">
                                   {ev.distance?.toFixed(1) ?? "0.0"} mi
                                 </span>
 
-                                {/* bottom details */}
+                                {/* Details */}
                                 {(() => {
                                   const performerNames = ev.artistIds.map((id) => artistById.get(id)?.name).filter(Boolean) as string[];
-                                  const performerLine = performerNames.length > 2 ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}` : performerNames.join(", ");
+                                  const performerLine =
+                                    performerNames.length > 2
+                                      ? `${performerNames.slice(0, 2).join(", ")} +${performerNames.length - 2}`
+                                      : performerNames.join(", ");
                                   return (
                                     <div className="absolute left-4 right-4 bottom-3 space-y-0.5 text-white drop-shadow">
                                       <div className="text-sm sm:text-base font-semibold">{ev.name}</div>
-                                      <div className="text-xs text-white/90">{ev.genre}{performerLine ? ` • ${performerLine}` : ""}</div>
-                                      {host && <div className="text-[11px] text-white/80">Host: {host.name} • {host.followers.toLocaleString()} followers</div>}
+                                      <div className="text-xs text-white/90">
+                                        {ev.genre}
+                                        {performerLine ? ` • ${performerLine}` : ""}
+                                      </div>
+                                      {host && (
+                                        <div className="text-[11px] text-white/80">
+                                          Host: {host.name} • {host.followers.toLocaleString()} followers
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })()}
-                                <div className="absolute inset-0 ring-0 group-hover:ring-4 ring-pink-500/20 transition-all" />
+                                <div className="absolute inset-0 ring-0 group-hover:ring-4 ring-pink-500/20 transition-all pointer-events-none" />
                               </div>
-
-                              {host && (
-                                <button
-                                  onClick={() => toggleFollowHost(host.id)}
-                                  className={`mt-2 px-4 py-1.5 rounded-full text-white text-xs font-semibold w-full transition-colors ${
-                                    isFollowingHost ? "bg-gray-600 hover:bg-gray-500" : "bg-pink-600 hover:bg-pink-700"
-                                  }`}
-                                >
-                                  {isFollowingHost ? "Following" : `Follow ${host.name}`}
-                                </button>
-                              )}
                             </div>
                           );
                         })}
@@ -295,11 +315,21 @@ export default function Home() {
                           const isFollowingArtist = followedArtists.has(ar.id);
                           return (
                             <div key={ar.id} className="flex flex-col items-center">
-                              <button className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-gradient-to-br from-neutral-800 to-neutral-700">
+                              <button className="relative h-32 w-32 rounded-full overflow-hidden border border-neutral-200 dark:border-neutral-800">
+                                {/* Image fills the circle; fallback to default */}
+                                <Image
+                                  src={ar?.image || "/default-artist.jpg"}
+                                  alt={ar.name}
+                                  fill
+                                  className="object-cover object-center"
+                                  sizes="128px"
+                                />
                                 <div className="absolute inset-0 ring-0 hover:ring-4 ring-blue-500/20 transition-all" />
                               </button>
                               <span className="mt-3 text-sm text-neutral-100 font-medium">{ar.name}</span>
-                              <span className="text-xs text-neutral-400">{ar.genre} • {ar.followers.toLocaleString()} followers</span>
+                              <span className="text-xs text-neutral-400">
+                                {ar.genre} • {ar.followers.toLocaleString()} followers
+                              </span>
                               <button
                                 onClick={() => toggleFollowArtist(ar.id)}
                                 className={`mt-2 px-4 py-1.5 rounded-full text-white text-xs font-semibold transition-colors ${

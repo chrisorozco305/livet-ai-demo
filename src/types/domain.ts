@@ -6,6 +6,7 @@ export type Artist = {
   name: string;
   genre: string;
   followers: number;
+  image?: string;
 };
 
 export type Event = {
