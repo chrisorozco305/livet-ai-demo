@@ -83,6 +83,12 @@ export default function EventDetail({ event }: { event: EventDetailModel }) {
         <p className="mt-2 text-[11px] text-neutral-500">
           Prices are capped and transparent. If demand spikes, extra value goes to give-backs/VIP upgrades.
         </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button className="px-4 py-2 rounded bg-pink-600 text-white font-semibold hover:bg-pink-700 transition">Buy Ticket</button>
+          <button className="px-4 py-2 rounded bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition">Wishlist</button>
+          <button className="px-4 py-2 rounded bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition">Share Event</button>
+          <button className="px-4 py-2 rounded bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition">Plan with Friends</button>
+        </div>
       </section>
 
       {/* Crowdfund */}
