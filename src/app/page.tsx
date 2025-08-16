@@ -194,6 +194,47 @@ export default function Home() {
                 className="w-full text-left px-4 py-2 text-sm text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                 onClick={() => {
                   setProfileOpen(false);
+                  // TODO: Add navigation logic
+                  alert("My Tickets clicked!");
+                }}
+              >
+                My Tickets
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                onClick={() => {
+                  setProfileOpen(false);
+                  // TODO: Add navigation logic
+                  alert("My Likes clicked!");
+                }}
+              >
+                My Likes
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                onClick={() => {
+                  setProfileOpen(false);
+                  // TODO: Add navigation logic
+                  alert("Following clicked!");
+                }}
+              >
+                Following
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                onClick={() => {
+                  setProfileOpen(false);
+                  // TODO: Add navigation logic
+                  alert("Account Settings clicked!");
+                }}
+              >
+                Account Settings
+              </button>
+              <div className="border-t border-neutral-200 dark:border-neutral-800 my-2" />
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                onClick={() => {
+                  setProfileOpen(false);
                   // TODO: Add sign out logic here
                   alert("Signed out!");
                 }}
