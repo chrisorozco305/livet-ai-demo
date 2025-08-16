@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { events as eventList, artists as artistList, hosts as hostList } from "@/data/mock";
 
@@ -159,25 +159,56 @@ export default function Home() {
   const nextArtistPage = () => setArtistPage((p) => (p + 1) % artistPages);
   const prevArtistPage = () => setArtistPage((p) => (p - 1 + artistPages) % artistPages);
 
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handler = (e: MouseEvent) => {
+      // @ts-ignore
+      if (!(e.target as HTMLElement)?.closest("#profile-menu")) setProfileOpen(false);
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [profileOpen]);
+
   return (
     <div className="min-h-screen w-screen font-sans relative flex flex-col">
       {/* HEADER - fixed */}
       <header className="fixed top-0 inset-x-0 z-20 h-16 flex items-center justify-between px-8 shadow-sm border-b border-gray-200/50 dark:border-gray-800/60 bg-black/60 backdrop-blur">
         <div className="text-2xl font-bold text-gray-100 dark:text-white">Livet</div>
-        <nav>
-          <ul className="flex gap-6">
-            <li><button className="text-gray-100 hover:text-blue-300 font-medium transition-colors">Home</button></li>
-            <li><button className="text-gray-100 hover:text-blue-300 font-medium transition-colors">Events</button></li>
-            <li><button className="text-gray-100 hover:text-blue-300 font-medium transition-colors">Artists</button></li>
-            <li><button className="text-gray-100 hover:text-blue-300 font-medium transition-colors">Recommended</button></li>
-          </ul>
-        </nav>
+        <div className="relative" id="profile-menu">
+          <button
+            aria-label="Profile"
+            className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow hover:scale-105 transition"
+            onClick={() => setProfileOpen((v) => !v)}
+          >
+            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-3.314 3.134-6 7-6s7 2.686 7 6" />
+            </svg>
+          </button>
+          {profileOpen && (
+            <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800 z-50 py-2">
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                onClick={() => {
+                  setProfileOpen(false);
+                  // TODO: Add sign out logic here
+                  alert("Signed out!");
+                }}
+              >
+                Sign Out
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* HERO */}
       <main className="relative flex flex-col items-center justify-center min-h-screen w-full overflow-hidden pt-16">
         <div className="absolute inset-0 -z-10">
-          <Image src="/hero-concert.jpg" alt="Concert crowd and stage" fill style={{ objectFit: "cover" }} priority />
+          <Image src="/hero-concert.jpg" alt="Concert crowd and stage" fill style={{ objectFit: "cover" }} priority unoptimized />
           <div className="absolute inset-0 bg-black/60" />
         </div>
         <h1 className="text-5xl sm:text-7xl font-extrabold text-white drop-shadow-lg text-center">Livet</h1>
@@ -323,6 +354,7 @@ export default function Home() {
                                   fill
                                   className="object-cover object-center"
                                   sizes="128px"
+                                  unoptimized
                                 />
                                 <div className="absolute inset-0 ring-0 hover:ring-4 ring-blue-500/20 transition-all" />
                               </button>
