@@ -1,36 +1,19 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## AI Recommendation (quick overview)
 
-## Getting Started
+This project includes a small recommendation pipeline used by the "City Events" / "For You" feed.
 
-First, run the development server:
+- Architecture
+	- `src/data/mock.ts` holds sample data (events, artists, hosts) used by the demo.
+	- `src/utils/recs.ts` contains the scorer logic and types.
+	- `src/app/api/recommend/route.ts` is a Next.js App Router endpoint that scores events server-side and returns ranked recommendations as JSON.
+	- The client (`src/app/page.tsx`) builds `userPrefs` from local state and either calls the API or uses the scorer directly to order events and render reason chips.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- How the scorer works
+	- `scoreEvent(evt, userPrefs)` computes three component fits: `distanceFit`, `priceFit`, and `tasteFit`.
+	- The final score is a weighted sum: 0.5 * distance + 0.3 * price + 0.2 * taste (normalized 0..1).
+	- The scorer also returns human-readable `reasons` (top-2 contributing reasons) to show why an event was suggested.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- How `userPrefs` are built
+	- On the client, `userPrefs` is derived from the user's liked events (local state). Liked events' genres are aggregated into `likedGenres` and a price band center/width is used (defaults: center=30, width=10).
+	- The API accepts query params to build a minimal `UserPrefs` server-side: `likedGenres` (comma-separated), `bandCenter`, `bandWidth`, and `limit`.
+	- The server route uses safe defaults and guards against missing fields so scoring never crashes.
