@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/supabaseClient";
 import { events as eventList, artists as artistList, hosts as hostList } from "@/data/mock";
 
 /* ---------- Reusable UI ---------- */
