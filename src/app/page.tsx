@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/supabaseClient";
 import { events as eventList, artists as artistList, hosts as hostList } from "@/data/mock";
+import { scoreEvent, type UserPrefs } from "@/utils/recs";
 
 /* ---------- Reusable UI ---------- */
 function FilterPills({
@@ -123,9 +124,26 @@ export default function Home() {
   // source data
   const hosts = hostList;
 
+  // build user prefs from session state (likedEvents)
+  const userPrefs: UserPrefs = useMemo(() => {
+    const likedGenres = new Set<string>();
+    for (const id of Array.from(likedEvents)) {
+      const ev = eventList.find((e) => e.id === id);
+      if (ev?.genre) likedGenres.add(ev.genre);
+    }
+    if (likedGenres.size === 0) likedGenres.add("EDM");
+    return { likedGenres, priceBandCenter: 30, priceBandWidth: 10 };
+  }, [likedEvents]);
+
   // filter Events
   let events = eventList;
-  if (eventFilter === "Near") {
+  if (eventFilter === "Suggested") {
+    events = [...events].sort((a, b) => {
+      const sa = scoreEvent(a as any, userPrefs).score;
+      const sb = scoreEvent(b as any, userPrefs).score;
+      return sb - sa;
+    });
+  } else if (eventFilter === "Near") {
     events = [...events].sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   } else if (eventFilter === "Popular") {
     events = [...events].sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0));
@@ -322,6 +340,13 @@ export default function Home() {
                                         {ev.genre}
                                         {performerLine ? ` • ${performerLine}` : ""}
                                       </div>
+                                      {eventFilter === "Suggested" && (
+                                        <div className="mt-1 flex gap-2 flex-wrap">
+                                          {scoreEvent(ev as any, userPrefs).reasons.map((r, i) => (
+                                            <span key={i} className="bg-white/10 text-[11px] rounded-full px-2 py-0.5">{r}</span>
+                                          ))}
+                                        </div>
+                                      )}
                                       {host && (
                                         <div className="text-[11px] text-white/80">
                                           Host: {host.name} • {host.followers.toLocaleString()} followers
