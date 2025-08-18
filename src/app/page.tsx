@@ -99,6 +99,57 @@ export default function Home() {
   // Like state for events (ids of liked events)
   const [likedEvents, setLikedEvents] = useState<Set<string>>(new Set());
 
+  // localStorage keys
+  const LS_KEYS = {
+    liked: "livet:likedEvents",
+    hosts: "livet:followedHosts",
+    artists: "livet:followedArtists",
+  };
+
+  // Load persisted sets on first client render
+  useEffect(() => {
+    try {
+      const rawLiked = localStorage.getItem(LS_KEYS.liked);
+      if (rawLiked) {
+        const arr = JSON.parse(rawLiked);
+        if (Array.isArray(arr)) setLikedEvents(new Set(arr));
+      }
+      const rawHosts = localStorage.getItem(LS_KEYS.hosts);
+      if (rawHosts) {
+        const arr = JSON.parse(rawHosts);
+        if (Array.isArray(arr)) setFollowedHosts(new Set(arr));
+      }
+      const rawArtists = localStorage.getItem(LS_KEYS.artists);
+      if (rawArtists) {
+        const arr = JSON.parse(rawArtists);
+        if (Array.isArray(arr)) setFollowedArtists(new Set(arr));
+      }
+    } catch (err) {
+      // ignore malformed localStorage
+    }
+    // run only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist when sets change
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.liked, JSON.stringify(Array.from(likedEvents)));
+    } catch {}
+  }, [likedEvents]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.hosts, JSON.stringify(Array.from(followedHosts)));
+    } catch {}
+  }, [followedHosts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEYS.artists, JSON.stringify(Array.from(followedArtists)));
+    } catch {}
+  }, [followedArtists]);
+
   const toggleFollowHost = (hostId: string) => {
     setFollowedHosts((prev) => {
       const next = new Set(prev);
