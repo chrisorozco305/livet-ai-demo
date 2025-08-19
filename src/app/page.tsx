@@ -240,8 +240,8 @@ export default function Home() {
     return { likedGenres, priceBandCenter: Math.round(mean), priceBandWidth: Math.round(width) };
   }, [likedEvents, purchasedIds]);
 
-  // filter Events
-  let events = eventList;
+  // filter Events (exclude purchased events from city listings)
+  let events = eventList.filter((e) => !purchasedIds.has(e.id));
   if (eventFilter === "Suggested") {
     events = [...events].sort((a, b) => {
   const sa = scoreEvent({ ...(a as any), purchased: purchasedIds.has(a.id) }, userPrefs).score;
