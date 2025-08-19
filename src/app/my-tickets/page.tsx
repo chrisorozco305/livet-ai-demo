@@ -16,9 +16,26 @@ export default function MyTickets() {
     }
   }, []);
 
+  const clearTickets = () => {
+    try {
+      localStorage.removeItem('livet:myTickets');
+    } catch (e) {
+      // ignore
+    }
+    setTickets([]);
+  };
+
   return (
     <main className="min-h-screen p-6 max-w-4xl mx-auto text-neutral-100">
-      <h1 className="text-2xl font-bold mb-4">My Tickets</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">My Tickets</h1>
+        <button
+          onClick={clearTickets}
+          className="ml-4 px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
+        >
+          Clear
+        </button>
+      </div>
       {tickets.length === 0 ? (
         <div className="text-neutral-400">You have no tickets yet. Buy a ticket from an event to see it here.</div>
       ) : (
