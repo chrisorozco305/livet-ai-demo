@@ -3,11 +3,9 @@ import EventDetail, { EventDetailModel } from "@/components/EventDetail";
 import { events } from "@/data/mock";
 import { fairPriceFromFDI } from "@/lib/pricing";
 
-type Params = { params: { id: string } };
-
-export default async function EventPage({ params }: { params: { id: string } }) {
-  // Await params for Next.js dynamic route compliance
-  const awaitedParams = await params;
+export default async function EventPage(props: any) {
+  // Await params (required by Next for sync dynamic APIs)
+  const awaitedParams = await props?.params;
   if (!awaitedParams || !awaitedParams.id) {
     return <div className="max-w-[960px] mx-auto p-4 text-neutral-200">Invalid event route.</div>;
   }

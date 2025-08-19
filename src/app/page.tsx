@@ -104,6 +104,7 @@ export default function Home() {
     liked: "livet:likedEvents",
     hosts: "livet:followedHosts",
     artists: "livet:followedArtists",
+  tickets: "livet:myTickets",
   };
 
   // Load persisted sets on first client render
@@ -150,6 +151,27 @@ export default function Home() {
     } catch {}
   }, [followedArtists]);
 
+  // Purchased tickets state (loaded from localStorage)
+  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEYS.tickets);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          const ids = new Set<string>();
+          for (const t of arr) if (t && t.id) ids.add(t.id);
+          setPurchasedIds(ids);
+        }
+      }
+    } catch (e) {
+      // ignore malformed localStorage
+    }
+    // run only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const toggleFollowHost = (hostId: string) => {
     setFollowedHosts((prev) => {
       const next = new Set(prev);
@@ -175,23 +197,55 @@ export default function Home() {
   // source data
   const hosts = hostList;
 
-  // build user prefs from session state (likedEvents)
+  // build user prefs from session state (likedEvents + purchases). Purchases get higher weight for price signal.
   const userPrefs: UserPrefs = useMemo(() => {
     const likedGenres = new Set<string>();
+
+    // collect price samples with weights (likes=1, purchases=3)
+    let totalWeight = 0;
+    let weightedSum = 0;
+    let weightedSumSq = 0;
+
     for (const id of Array.from(likedEvents)) {
       const ev = eventList.find((e) => e.id === id);
       if (ev?.genre) likedGenres.add(ev.genre);
+      if (typeof ev?.price === "number") {
+        const w = 1;
+        totalWeight += w;
+        weightedSum += ev.price * w;
+        weightedSumSq += ev.price * ev.price * w;
+      }
     }
+
+    for (const id of Array.from(purchasedIds)) {
+      const ev = eventList.find((e) => e.id === id);
+      if (ev?.genre) likedGenres.add(ev.genre);
+      if (typeof ev?.price === "number") {
+        const w = 3; // purchases are stronger signal
+        totalWeight += w;
+        weightedSum += ev.price * w;
+        weightedSumSq += ev.price * ev.price * w;
+      }
+    }
+
     if (likedGenres.size === 0) likedGenres.add("EDM");
-    return { likedGenres, priceBandCenter: 30, priceBandWidth: 10 };
-  }, [likedEvents]);
+
+    if (totalWeight <= 0) return { likedGenres, priceBandCenter: 30, priceBandWidth: 10 };
+
+    const mean = weightedSum / totalWeight;
+    const variance = Math.max(0, weightedSumSq / totalWeight - mean * mean);
+    const std = Math.sqrt(variance);
+    // width: scale std to a reasonable price-band; ensure a minimum
+    const width = Math.max(5, std * 2);
+    return { likedGenres, priceBandCenter: Math.round(mean), priceBandWidth: Math.round(width) };
+  }, [likedEvents, purchasedIds]);
 
   // filter Events
   let events = eventList;
   if (eventFilter === "Suggested") {
     events = [...events].sort((a, b) => {
-      const sa = scoreEvent(a as any, userPrefs).score;
-      const sb = scoreEvent(b as any, userPrefs).score;
+  const sa = scoreEvent({ ...(a as any), purchased: purchasedIds.has(a.id) }, userPrefs).score;
+  const sb = scoreEvent({ ...(b as any), purchased: purchasedIds.has(b.id) }, userPrefs).score;
       return sb - sa;
     });
   } else if (eventFilter === "Near") {
@@ -398,7 +452,7 @@ export default function Home() {
                                       </div>
                                       {eventFilter === "Suggested" && (
                                         <div className="mt-1 flex gap-2 flex-wrap">
-                                          {scoreEvent(ev as any, userPrefs).reasons.map((r, i) => (
+                                          {scoreEvent({ ...(ev as any), purchased: purchasedIds.has(ev.id) }, userPrefs).reasons.map((r, i) => (
                                             <span key={i} className="bg-white/10 text-[11px] rounded-full px-2 py-0.5">{r}</span>
                                           ))}
                                         </div>

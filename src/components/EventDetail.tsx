@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { clamp, toPct, riskPct, fairPriceFromFDI } from "@/lib/pricing";
 
 export type CostBreakdown = {
@@ -28,6 +29,7 @@ export type EventDetailModel = {
 };
 
 export default function EventDetail({ event }: { event: EventDetailModel }) {
+  const router = useRouter();
   const [local, setLocal] = useState(event);
 
   const fdiPct = toPct(local.fdi);
@@ -38,6 +40,19 @@ export default function EventDetail({ event }: { event: EventDetailModel }) {
     const fdi = clamp(local.fdi + 0.02, 0, 1);
     const current = fairPriceFromFDI(local.fairPrice.min, local.fairPrice.cap, fdi);
     setLocal({ ...local, pledge_value, fdi, fairPrice: { ...local.fairPrice, current } });
+  }
+
+  function onBuy() {
+    try {
+      const raw = localStorage.getItem('livet:myTickets');
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.push({ id: local.id, name: local.name, price: local.fairPrice.current, purchasedAt: Date.now() });
+      localStorage.setItem('livet:myTickets', JSON.stringify(arr));
+    } catch (e) {
+      // ignore storage errors
+    }
+    // navigate to My Tickets
+    router.push('/my-tickets');
   }
 
   const [ask, setAsk] = useState<number | "">("");
@@ -84,7 +99,7 @@ export default function EventDetail({ event }: { event: EventDetailModel }) {
           Prices are capped and transparent. If demand spikes, extra value goes to give-backs/VIP upgrades.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button className="px-4 py-2 rounded bg-pink-600 text-white font-semibold hover:bg-pink-700 transition">Buy Ticket</button>
+          <button onClick={onBuy} className="px-4 py-2 rounded bg-pink-600 text-white font-semibold hover:bg-pink-700 transition">Buy Ticket</button>
           <button className="px-4 py-2 rounded bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition">Wishlist</button>
           <button className="px-4 py-2 rounded bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition">Share Event</button>
           <button className="px-4 py-2 rounded bg-neutral-800 text-white font-semibold hover:bg-neutral-700 transition">Plan with Friends</button>

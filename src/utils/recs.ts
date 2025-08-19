@@ -11,6 +11,7 @@ export type EventLite = {
   genre?: string;
   distance?: number; // miles
   price?: number; // dollars
+  purchased?: boolean; // user has purchased this event
 };
 
 export type ScoreResult = {
@@ -52,16 +53,25 @@ export function tasteFit(user: UserPrefs, genre?: string): number {
 
 /**
  * scoreEvent: weighted combination and top-2 human-readable reasons.
- * score = 0.5*distance + 0.3*price + 0.2*taste
+ * Purchase is the strongest signal (purchaseWeight).
  */
 export function scoreEvent(evt: EventLite, user: UserPrefs): ScoreResult {
   const d = distanceFit(evt.distance);
   const p = priceFit(evt.price, user.priceBandCenter, user.priceBandWidth);
   const t = tasteFit(user, evt.genre);
+  const purchased = evt.purchased ? 1 : 0;
 
-  const score = clamp(0.5 * d + 0.3 * p + 0.2 * t, 0, 1);
+  // weights: purchases highest, then distance, then price, then taste
+  const purchaseWeight = 0.5;
+  const distanceWeight = 0.25;
+  const priceWeight = 0.15;
+  const tasteWeight = 0.1;
+
+  const rawScore = purchaseWeight * purchased + distanceWeight * d + priceWeight * p + tasteWeight * t;
+  const score = clamp(rawScore, 0, 1);
 
   const reasonsPool: { key: string; val: number; label: string }[] = [
+    { key: "purchase", val: purchased, label: "Purchased" },
     { key: "distance", val: d, label: "Near you" },
     { key: "price", val: p, label: "In your price range" },
     { key: "taste", val: t, label: evt.genre ? `Matches your ${evt.genre}` : "Matches your genre" },
