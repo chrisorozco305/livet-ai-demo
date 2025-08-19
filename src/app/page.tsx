@@ -360,15 +360,20 @@ export default function Home() {
                                     {displayLikes.toLocaleString()}
                                   </button>
                                   {host && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); toggleFollowHost(host.id); }}
-                                      className={`px-3 py-1 rounded-full text-white text-xs font-semibold transition-colors pointer-events-auto ${
-                                        isFollowingHost ? "bg-gray-600 hover:bg-gray-500" : "bg-pink-600 hover:bg-pink-700"
-                                      }`}
-                                    >
-                                      {isFollowingHost ? "Following" : "Follow Host"}
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); toggleFollowHost(host.id); }}
+                                        className={`px-3 py-1 rounded-full text-white text-xs font-semibold transition-colors pointer-events-auto ${
+                                          isFollowingHost ? "bg-gray-600 hover:bg-gray-500" : "bg-pink-600 hover:bg-pink-700"
+                                        }`}
+                                      >
+                                        {isFollowingHost ? "Following" : "Follow Host"}
+                                      </button>
+                                      {typeof ev.price === "number" && (
+                                        <span className="text-[11px] bg-white/10 px-2 py-0.5 rounded text-white">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(ev.price)}</span>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
 

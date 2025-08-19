@@ -17,4 +17,5 @@ export type Event = {
   hostId: string;
   artistIds: string[];
   distance: number; // miles
+  price?: number; // optional price in dollars
 };

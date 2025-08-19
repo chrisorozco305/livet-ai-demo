@@ -21,14 +21,24 @@ export default async function EventPage({ params }: { params: { id: string } }) 
   const break_even_cost = baseCost.venue + baseCost.production + baseCost.artist_min + baseCost.platform;
 
   const capacity = 1200;
-  const min = Number((break_even_cost / capacity).toFixed(2));
-  const cap = Number((min * 1.15).toFixed(2));
+  // Use event price as the current fair price when present. Otherwise fallback to FDI-derived price.
   const fdi = 0.62;
+  const breakEvenPerTicket = Number((break_even_cost / capacity).toFixed(2));
+
+  // prefer provided mock price if available
+  const providedPrice = typeof (raw as any).price === "number" ? Number((raw as any).price) : undefined;
+
+  // derive min and cap relative to provided/current price while respecting break-even
+  const currentFromPrice = providedPrice;
+  const min = currentFromPrice
+    ? Number(Math.max(breakEvenPerTicket, Number((currentFromPrice * 0.9).toFixed(2))).toFixed(2))
+    : breakEvenPerTicket;
+  const cap = currentFromPrice ? Number((currentFromPrice * 1.15).toFixed(2)) : Number((min * 1.15).toFixed(2));
 
   const fairPrice = {
     min,
     cap,
-    current: Number(fairPriceFromFDI(min, cap, fdi).toFixed(2)),
+    current: Number((currentFromPrice ?? fairPriceFromFDI(min, cap, fdi)).toFixed(2)),
   };
 
   const event: EventDetailModel = {
